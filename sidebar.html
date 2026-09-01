@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Stats</title>
+  <link rel="stylesheet" href="/statcard.css" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: Georgia, serif;
+      background: #1a1a1a;
+      color: #e8e0d8;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    .sticky-top {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .header {
+      background: #6b0000;
+      padding: 10px 14px;
+      border-bottom: 2px solid #3d0000;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header h1 { margin: 0; font-size: 16px; color: #fff; }
+    .token-label { font-size: 11px; color: #ffb3b3; margin-top: 2px; }
+    .mode-toggle { display: flex; gap: 4px; }
+    .mode-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 4px;
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: 11px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .mode-btn.active { background: #fff; color: #6b0000; font-weight: bold; }
+
+    /* ── Persistent roll log ── */
+    #roll-log {
+      background: #16100e;
+      border-bottom: 2px solid #3a2a1a;
+    }
+    .roll-log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #c9a87a;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .roll-log-header:hover { background: #201612; }
+    #roll-log-arrow { transition: transform 0.15s; }
+    #roll-log.collapsed #roll-log-arrow { transform: rotate(-90deg); }
+    #roll-log.collapsed .roll-log-list { display: none; }
+    .roll-log-list {
+      max-height: 130px;
+      overflow-y: auto;
+      padding: 0 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .roll-log-entry {
+      font-size: 12px;
+      line-height: 1.3;
+      color: #e0d8cc;
+      padding: 4px 8px;
+      background: #221812;
+      border-radius: 4px;
+      border-left: 3px solid #6b0000;
+    }
+    .roll-log-entry.miss { border-left-color: #555; color: #999; }
+    .roll-log-entry.hit { border-left-color: #2f7a3a; }
+    .roll-log-entry.damage { border-left-color: #b23a3a; }
+    .roll-log-empty {
+      font-size: 11px;
+      color: #776b60;
+      font-style: italic;
+      padding: 4px 8px;
+    }
+
+    /* ── Initiative tracker ── */
+    #init-panel {
+      background: #10161a;
+      border-bottom: 2px solid #1a2a30;
+    }
+    .init-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #7ac9c0;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .init-header:hover { background: #16202430; }
+    #init-arrow { transition: transform 0.15s; }
+    #init-panel:not(.collapsed) #init-arrow { transform: rotate(90deg); }
+    #init-panel.collapsed .init-body { display: none; }
+    .init-body { padding: 0 14px 10px; }
+    .init-controls {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .init-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .init-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      background: #182228;
+      border-radius: 4px;
+      border-left: 3px solid #3a4a50;
+      font-size: 12px;
+    }
+    .init-row.current {
+      background: #1e3a2a;
+      border-left-color: #4ac96a;
+    }
+    .init-value {
+      font-weight: bold;
+      color: #7ac9c0;
+      min-width: 22px;
+      text-align: center;
+    }
+    .init-name {
+      flex: 1;
+      color: #e0d8cc;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .init-remove {
+      background: none;
+      border: none;
+      color: #776b60;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0 2px;
+    }
+    .init-remove:hover { color: #cc4444; }
+    .init-empty {
+      font-size: 11px;
+      color: #776b60;
+      font-style: italic;
+      padding: 4px 8px;
+    }
+
+    /* ── Initiative controls on the light stat card (own token / GM) ── */
+    #card-init { display: flex; }
+    .card-init-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #2b2b2b;
+    }
+    .card-init-row label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #6b5a45;
+    }
+    .card-init-row input {
+      width: 54px;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      padding: 4px 6px;
+      border: 1px solid #c9a87a;
+      border-radius: 4px;
+      background: #fff;
+      color: #2b2b2b;
+    }
+    .card-init-roll {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+    .card-init-rolled {
+      font-size: 12px;
+      color: #6b5a45;
+      font-style: italic;
+    }
+
+    .no-token {
+      min-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      gap: 8px;
+      text-align: center;
+      padding: 20px;
+    }
+    .no-token svg { opacity: 0.3; }
+    .no-token p { font-size: 13px; line-height: 1.5; }
+
+    #view-card-wrapper {
+      background: #f8f5f2;
+      margin: 0;
+    }
+
+    /* ── HP tracker controls ── */
+    .hp-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hp-value {
+      font-weight: bold;
+      font-size: 15px;
+      min-width: 54px;
+      text-align: center;
+      display: inline-block;
+    }
+    .hp-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid #8b0000;
+      background: #fff;
+      color: #8b0000;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .hp-btn:hover { background: #f0dede; }
+    .hp-btn:active { transform: scale(0.9); }
+
+    ::-webkit-scrollbar { width: 10px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #5a5a5a; border-radius: 5px; border: 2px solid #111; }
+    ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+    /* ── Edit form styling ── */
+    .form-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .section { background: #242424; border: 1px solid #333; border-radius: 6px; overflow: hidden; }
+    .section-title {
+      background: #2e2e2e; color: #c9a87a; font-size: 11px; font-weight: bold;
+      text-transform: uppercase; letter-spacing: 1px; padding: 6px 10px; border-bottom: 1px solid #333;
+    }
+    .section-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    .row { display: flex; gap: 8px; min-width: 0; }
+    .field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+    .field label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #b8b8b8; }
+    .field input, .field textarea, .field select {
+      background: #2a2a2a; border: 1px solid #5a5a5a; border-radius: 4px; color: #e8e0d8;
+      font-family: Georgia, serif; font-size: 14px; padding: 8px 10px; width: 100%; min-height: 36px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .field input:hover, .field textarea:hover, .field select:hover { background: #303030; }
+    .field input:focus, .field textarea:focus, .field select:focus { outline: none; border-color: #c9a87a; background: #303030; }
+    .field input::placeholder, .field textarea::placeholder { color: #777; }
+    .field textarea { resize: vertical; min-height: 70px; }
+    .ability-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 10px; }
+    .ability-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ability-cell label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #c9a87a; font-weight: bold; }
+    .ability-cell input {
+      background: #2a2a2a; border: 1px solid #5a5a5a; border-radius: 4px; color: #e8e0d8;
+      font-family: Georgia, serif; font-size: 14px; padding: 7px 2px; width: 100%; min-height: 34px; text-align: center;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .ability-cell input:hover { background: #303030; }
+    .ability-cell input:focus { outline: none; border-color: #c9a87a; background: #303030; }
+    .ability-mod { font-size: 11px; color: #b8b8b8; min-height: 14px; }
+    .dynamic-list { display: flex; flex-direction: column; gap: 6px; }
+    .dynamic-row {
+      background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 4px; padding: 8px;
+      display: flex; flex-direction: column; gap: 6px; position: relative;
+    }
+    .dynamic-row .remove-btn {
+      position: absolute; top: 6px; right: 6px; background: none; border: none;
+      color: #666; cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px;
+    }
+    .dynamic-row .remove-btn:hover { color: #cc4444; }
+    .add-btn {
+      background: none; border: 1px dashed #666; border-radius: 4px; color: #b8b8b8;
+      cursor: pointer; font-family: Georgia, serif; font-size: 12px; padding: 6px;
+      text-align: center; transition: border-color 0.15s, color 0.15s; margin-top: 2px;
+    }
+    .add-btn:hover { border-color: #c9a87a; color: #c9a87a; }
+    .visibility-row { display: flex; align-items: center; gap: 10px; padding: 10px; }
+    .visibility-row label { color: #b8b8b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .vis-options { display: flex; gap: 6px; }
+    .vis-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid #5a5a5a; background: #2a2a2a;
+      color: #aaa; cursor: pointer; font-family: Georgia, serif; font-size: 12px; transition: all 0.15s;
+    }
+    .vis-btn.active { background: #6b0000; border-color: #8b0000; color: #fff; }
+    .footer {
+      padding: 10px 14px; border-top: 1px solid #333; display: flex; gap: 8px;
+      background: #1a1a1a; position: sticky; bottom: 0; z-index: 20;
+    }
+    .btn-save {
+      flex: 1; background: #6b0000; border: none; border-radius: 5px; color: #fff;
+      cursor: pointer; font-family: Georgia, serif; font-size: 14px; padding: 9px; transition: background 0.15s;
+    }
+    .btn-save:hover { background: #8b0000; }
+    .btn-save:disabled { background: #333; color: #666; cursor: default; }
+    .btn-clear {
+      background: none; border: 1px solid #555; border-radius: 5px; color: #b8b8b8;
+      cursor: pointer; font-family: Georgia, serif; font-size: 13px; padding: 9px 14px; transition: all 0.15s;
+    }
+    .btn-clear:hover { border-color: #cc4444; color: #cc4444; }
+    #status {
+      position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%);
+      background: #2a5c2a; color: #9ddb9d; border: 1px solid #3a7a3a; border-radius: 20px;
+      padding: 6px 16px; font-size: 12px; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+      white-space: nowrap; z-index: 999;
+    }
+    #status.error { background: #5c2a2a; color: #db9d9d; border-color: #7a3a3a; }
+    #status.show { opacity: 1; }
+    .lib-select-row { display: flex; gap: 6px; align-items: center; }
+    .lib-select-row select {
+      flex: 1; background: #2a2a2a; border: 1px solid #5a5a5a; border-radius: 4px; color: #e8e0d8;
+      font-family: Georgia, serif; font-size: 13px; padding: 7px 8px; min-height: 34px;
+    }
+    .lib-select-row select:focus { outline: none; border-color: #c9a87a; }
+    .lib-btn {
+      background: #2a2a2a; border: 1px solid #5a5a5a; border-radius: 4px; color: #c9a87a;
+      cursor: pointer; font-family: Georgia, serif; font-size: 12px; padding: 7px 10px;
+      white-space: nowrap; transition: all 0.15s;
+    }
+    .lib-btn:hover { background: #333; border-color: #c9a87a; }
+    .lib-btn.danger:hover { border-color: #cc4444; color: #cc4444; }
+    .lib-action-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .lib-count { font-size: 11px; color: #999; margin-top: 2px; }
+    .lib-empty { font-size: 12px; color: #999; font-style: italic; display: none; }
+
+    /* ── Combat panel (two-token attack resolver) ── */
+    #combat-panel {
+      background: #241414;
+      border-bottom: 2px solid #3d0000;
+      padding: 10px 14px;
+    }
+    .combat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      color: #e0a0a0;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .combat-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .combat-side {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 8px;
+      min-width: 0;
+    }
+    .combat-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #b8b8b8;
+      margin-bottom: 3px;
+    }
+    .combat-name {
+      font-weight: bold;
+      font-size: 14px;
+      color: #e8e0d8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .combat-ac { font-size: 12px; color: #b8b8b8; margin-top: 4px; }
+    .combat-hp { font-size: 12px; color: #b8b8b8; margin-top: 2px; }
+    .combat-vs {
+      align-self: center;
+      color: #888;
+      font-style: italic;
+      font-size: 12px;
+      padding-top: 16px;
+    }
+    .combat-attacks { display: flex; flex-direction: column; gap: 6px; }
+    .combat-attack-btn {
+      background: #6b0000;
+      border: 1px solid #8b0000;
+      border-radius: 4px;
+      color: #fff;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      padding: 8px 10px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .combat-attack-btn:hover { background: #8b0000; }
+    .combat-attack-btn:disabled { background: #333; border-color: #444; color: #777; cursor: default; }
+    .combat-note {
+      font-size: 11px;
+      color: #999;
+      margin-top: 6px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sticky-top">
+    <div class="header">
+      <div>
+        <h1>⚔ NPC Stats</h1>
+        <div class="token-label" id="token-label">No token selected</div>
+      </div>
+      <div class="mode-toggle" id="mode-toggle" style="display:none">
+        <button class="mode-btn active" id="mode-view" data-mode="view">View</button>
+        <button class="mode-btn" id="mode-edit" data-mode="edit">Edit</button>
+      </div>
+    </div>
+
+    <!-- ── ROLL LOG (always visible, independent of current mode) ── -->
+    <div id="roll-log">
+      <div class="roll-log-header" id="roll-log-toggle">
+        <span>🎲 Roll Log</span>
+        <span id="roll-log-arrow">▾</span>
+      </div>
+      <div id="roll-log-list" class="roll-log-list">
+        <div class="roll-log-empty">No rolls yet this session.</div>
+      </div>
+    </div>
+
+    <!-- ── INITIATIVE TRACKER (always visible, shared with everyone) ── -->
+    <div id="init-panel" class="collapsed">
+      <div class="init-header" id="init-toggle">
+        <span>⚡ Initiative — <span id="init-summary">Not started</span></span>
+        <span id="init-arrow">▸</span>
+      </div>
+      <div id="init-body" class="init-body">
+        <div class="init-controls" id="init-controls" style="display:none">
+          <button class="lib-btn" id="init-roll-selected">🎲 Roll for Selected</button>
+          <button class="lib-btn" id="init-next-turn">⏭ Next Turn</button>
+          <button class="lib-btn danger" id="init-clear-all">🗑 Clear All</button>
+        </div>
+        <div id="init-list" class="init-list">
+          <div class="init-empty">No one in the initiative order yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="no-token-msg" class="no-token">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+    </svg>
+    <p>Select a token on the map<br>to see its stats here.</p>
+  </div>
+
+  <!-- ── COMBAT PANEL (shown when 2 tokens are selected) ── -->
+  <div id="combat-panel" style="display:none">
+    <div class="combat-header">
+      <span>⚔ Combat</span>
+      <button class="lib-btn" id="combat-swap">⇄ Swap</button>
+    </div>
+    <div class="combat-row">
+      <div class="combat-side">
+        <div class="combat-label">Attacker</div>
+        <div class="combat-name" id="combat-attacker-name">—</div>
+      </div>
+      <div class="combat-vs">vs</div>
+      <div class="combat-side">
+        <div class="combat-label">Target</div>
+        <div class="combat-name" id="combat-target-name">—</div>
+        <div class="combat-ac" id="combat-target-ac"></div>
+        <div class="combat-hp" id="combat-target-hp"></div>
+      </div>
+    </div>
+    <div id="combat-attacks" class="combat-attacks"></div>
+    <div id="combat-note" class="combat-note"></div>
+  </div>
+
+  <!-- ── READ-ONLY VIEW ── -->
+  <div id="view-card-wrapper" style="display:none">
+    <div id="card" class="stat-card">
+      <div class="header" style="position:static;">
+        <h1 id="npc-name">NPC Name</h1>
+        <div id="npc-subtitle" class="subtitle"></div>
+      </div>
+      <div class="card-section">
+        <div class="stat-row">
+          <div><strong>AC</strong> <span id="npc-ac"></span></div>
+          <div><strong>HP</strong> <span id="npc-hp"></span></div>
+          <div><strong>Speed</strong> <span id="npc-speed"></span></div>
+        </div>
+      </div>
+      <div class="card-section" id="card-init" style="display:none; flex-direction: column; gap: 6px;"></div>
+      <div class="card-section ability-scores">
+        <div class="ability"><strong>STR</strong><span id="str"></span></div>
+        <div class="ability"><strong>DEX</strong><span id="dex"></span></div>
+        <div class="ability"><strong>CON</strong><span id="con"></span></div>
+        <div class="ability"><strong>INT</strong><span id="int"></span></div>
+        <div class="ability"><strong>WIS</strong><span id="wis"></span></div>
+        <div class="ability"><strong>CHA</strong><span id="cha"></span></div>
+      </div>
+      <div id="attacks" class="card-section"></div>
+      <div id="abilities" class="card-section"></div>
+      <div id="notes" class="card-section"></div>
+    </div>
+  </div>
+
+  <!-- ── GM EDIT FORM ── -->
+  <div id="editor" style="display:none">
+    <div class="form-body">
+
+      <div class="section">
+        <div class="section-title">📚 NPC Library</div>
+        <div class="section-body">
+          <div class="lib-select-row">
+            <select id="library-select"><option value="">— Choose a saved NPC —</option></select>
+            <button class="lib-btn" onclick="loadFromLibrary()">Load</button>
+            <button class="lib-btn danger" onclick="deleteFromLibrary()">✕</button>
+          </div>
+          <div id="library-count" class="lib-count"></div>
+          <div id="library-empty" class="lib-empty">No NPCs saved yet.</div>
+          <div class="lib-action-row">
+            <button class="lib-btn" onclick="saveToLibrary()">💾 Save to Library</button>
+            <button class="lib-btn" onclick="exportLibrary()">⬇ Export JSON</button>
+            <button class="lib-btn" onclick="importLibrary()">⬆ Import JSON</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Identity</div>
+        <div class="section-body">
+          <div class="field"><label>Name</label><input id="f-name" type="text" placeholder="Goblin Skirmisher" /></div>
+          <div class="field"><label>Subtitle</label><input id="f-subtitle" type="text" placeholder="Small humanoid, neutral evil" /></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Combat</div>
+        <div class="section-body">
+          <div class="row">
+            <div class="field"><label>AC</label><input id="f-ac" type="number" placeholder="15" min="0" /></div>
+            <div class="field"><label>Max HP</label><input id="f-hp" type="number" placeholder="7" min="0" /></div>
+            <div class="field"><label>Speed (ft)</label><input id="f-speed" type="number" placeholder="30" min="0" /></div>
+          </div>
+          <div class="field">
+            <label>Current HP</label>
+            <input id="f-currenthp" type="number" placeholder="Defaults to Max HP" min="0" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Ability Scores</div>
+        <div class="ability-grid">
+          <div class="ability-cell"><label>STR</label><input id="f-str" type="number" min="1" max="30" placeholder="10" oninput="updateMod('str')" /><div class="ability-mod" id="mod-str"></div></div>
+          <div class="ability-cell"><label>DEX</label><input id="f-dex" type="number" min="1" max="30" placeholder="10" oninput="updateMod('dex')" /><div class="ability-mod" id="mod-dex"></div></div>
+          <div class="ability-cell"><label>CON</label><input id="f-con" type="number" min="1" max="30" placeholder="10" oninput="updateMod('con')" /><div class="ability-mod" id="mod-con"></div></div>
+          <div class="ability-cell"><label>INT</label><input id="f-int" type="number" min="1" max="30" placeholder="10" oninput="updateMod('int')" /><div class="ability-mod" id="mod-int"></div></div>
+          <div class="ability-cell"><label>WIS</label><input id="f-wis" type="number" min="1" max="30" placeholder="10" oninput="updateMod('wis')" /><div class="ability-mod" id="mod-wis"></div></div>
+          <div class="ability-cell"><label>CHA</label><input id="f-cha" type="number" min="1" max="30" placeholder="10" oninput="updateMod('cha')" /><div class="ability-mod" id="mod-cha"></div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Actions / Attacks</div>
+        <div class="section-body">
+          <div class="dynamic-list" id="attacks-list"></div>
+          <button class="add-btn" onclick="addAttack()">+ Add Attack</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Traits & Abilities</div>
+        <div class="section-body">
+          <div class="dynamic-list" id="abilities-list"></div>
+          <button class="add-btn" onclick="addAbility()">+ Add Trait</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">GM Notes</div>
+        <div class="section-body">
+          <div class="field"><textarea id="f-notes" placeholder="Private notes, tactics, lore…"></textarea></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Visibility</div>
+        <div class="visibility-row">
+          <label>Show card to</label>
+          <div class="vis-options">
+            <button class="vis-btn active" id="vis-gm"  onclick="setVisibilityAndSave('gm')">GM Only</button>
+            <button class="vis-btn"        id="vis-all" onclick="setVisibilityAndSave('all')">Everyone</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <button class="btn-clear" onclick="clearForm()">Clear</button>
+      <button class="btn-save" id="save-btn" onclick="saveStats()">Save to Token</button>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <script type="module" src="/src/sidebar.js"></script>
+</body>
+</html>

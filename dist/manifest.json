@@ -1,0 +1,16 @@
+{
+  "manifest_version": 1,
+  "name": "NPC Stat Box",
+  "version": "2.8.25",
+  "description": "Shows NPC stat cards when a token is selected.",
+  "author": "Your Name",
+  "icon": "/icons/statcard.svg",
+  "background_url": "/background.html",
+  "action": {
+    "title": "NPC Stats",
+    "icon": "/icons/statcard.svg",
+    "popover": "/sidebar.html",
+    "height": 700,
+    "width": 420
+  }
+}

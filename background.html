@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NPC Stat Box — Background</title>
+</head>
+<body>
+  <!--
+    This page has no visible UI. OBR loads it invisibly for every player
+    as soon as the extension is enabled for the room (via manifest.json's
+    "background_url" field), and keeps it running for the whole session.
+
+    Main.js registers the context menu, the auto-popover-on-selection
+    listener, and the dice roll broadcast listener here — so they're
+    always active regardless of what panel a player currently has open.
+  -->
+  <script type="module" src="/src/Main.js"></script>
+</body>
+</html>

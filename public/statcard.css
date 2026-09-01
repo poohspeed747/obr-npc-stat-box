@@ -1,0 +1,199 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #f8f5f2;
+  font-family: Georgia, serif;
+}
+
+.stat-card {
+  width: 100%;
+  padding: 0;
+  background: #f8f5f2;
+  color: #2b2b2b;
+}
+
+.header {
+  background: #8b0000;
+  color: white;
+  padding: 12px 16px;
+  border-bottom: 3px solid #5a0000;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Toggle Switch */
+.toggle-container {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0;
+  right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #8b0000;
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+/* Renamed from .section -> .card-section to avoid colliding with the
+   dark GM-editor form's own .section class, which was overriding this
+   light card theme with a near-black background. */
+.card-section {
+  background: #f8f5f2;
+  padding: 12px 16px;
+  border-bottom: 1px solid #d4cfc8;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.ability-scores {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.ability {
+  width: 16%;
+  font-size: 14px;
+}
+
+.ability span {
+  display: block;
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+h2 {
+  font-size: 16px;
+  margin-bottom: 6px;
+  color: #8b0000;
+  border-bottom: 1px solid #c9c3bc;
+  padding-bottom: 2px;
+}
+
+.entry {
+  margin-bottom: 8px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+/* ── Clickable roll buttons ── */
+.roll-trigger {
+  font-family: Georgia, serif;
+  background: #fff8f0;
+  border: 1px solid #c9a87a;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.roll-trigger:hover {
+  background: #f0e0c8;
+}
+
+.roll-trigger:active {
+  transform: scale(0.96);
+}
+
+.roll-trigger:disabled {
+  background: #e5e0d8;
+  border-color: #c4baa8;
+  color: #999;
+  cursor: default;
+  transform: none;
+}
+
+.charge-badge {
+  color: #8b0000;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.recharge-btn {
+  font-family: Georgia, serif;
+  background: #fff0dc;
+  border: 1px solid #c9903a;
+  border-radius: 4px;
+  color: #8a5a1a;
+  font-size: 12px;
+  padding: 5px 8px;
+  margin-top: 4px;
+  width: 100%;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.recharge-btn:hover {
+  background: #f5e0c0;
+}
+
+.ability-btn {
+  display: block;
+  width: 100%;
+  font-size: 16px;
+  padding: 4px 2px;
+  margin-top: 4px;
+  color: #2b2b2b;
+}
+
+.atk-name-btn {
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: #2b2b2b;
+  line-height: 1.3;
+}
+
+.attack-entry {
+  margin-bottom: 6px;
+}

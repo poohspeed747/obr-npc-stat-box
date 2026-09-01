@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Stat Card</title>
+  <link rel="stylesheet" href="/statcard.css" />
+</head>
+
+<body>
+  <div id="card" class="stat-card">
+    <div class="header">
+      <h1 id="npc-name">NPC Name</h1>
+      <div id="npc-subtitle" class="subtitle"></div>
+
+      <!-- GM-only visibility toggle -->
+      <div id="visibility-toggle" class="toggle-container" style="display:none">
+        <label class="switch">
+          <input type="checkbox" id="toggle-visibility" />
+          <span class="slider"></span>
+        </label>
+        <span id="toggle-label">GM Only</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="stat-row">
+        <div><strong>AC</strong> <span id="npc-ac"></span></div>
+        <div><strong>HP</strong> <span id="npc-hp"></span></div>
+        <div><strong>Speed</strong> <span id="npc-speed"></span></div>
+      </div>
+    </div>
+
+    <div class="section ability-scores">
+      <div class="ability"><strong>STR</strong><span id="str"></span></div>
+      <div class="ability"><strong>DEX</strong><span id="dex"></span></div>
+      <div class="ability"><strong>CON</strong><span id="con"></span></div>
+      <div class="ability"><strong>INT</strong><span id="int"></span></div>
+      <div class="ability"><strong>WIS</strong><span id="wis"></span></div>
+      <div class="ability"><strong>CHA</strong><span id="cha"></span></div>
+    </div>
+
+    <div id="attacks"   class="section"></div>
+    <div id="abilities" class="section"></div>
+    <div id="notes"     class="section"></div>
+  </div>
+
+  <!-- Load OBR SDK as ES module — matches how Main.js uses it -->
+  <script type="module" src="/src/popover.js"></script>
+</body>
+</html>

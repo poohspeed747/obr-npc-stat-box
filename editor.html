@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Stat Editor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Georgia, serif;
+      background: #1a1a1a;
+      color: #e8e0d8;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #6b0000;
+      padding: 10px 14px;
+      border-bottom: 2px solid #3d0000;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .header h1 {
+      font-size: 16px;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+    .token-label {
+      font-size: 11px;
+      color: #ffb3b3;
+      margin-top: 2px;
+      min-height: 15px;
+    }
+
+    /* ── Form body — grows naturally, page itself scrolls ── */
+    .form-body {
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── Sections ── */
+    .section {
+      background: #242424;
+      border: 1px solid #333;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .section-title {
+      background: #2e2e2e;
+      color: #c9a87a;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 6px 10px;
+      border-bottom: 1px solid #333;
+    }
+    .section-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* ── Field rows ── */
+    .row { display: flex; gap: 8px; }
+    .field { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+    .field label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #888;
+    }
+    .field input, .field textarea, .field select {
+      background: #2a2a2a;
+      border: 1px solid #5a5a5a;
+      border-radius: 4px;
+      color: #e8e0d8;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      padding: 8px 10px;
+      width: 100%;
+      min-height: 36px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .field input:hover, .field textarea:hover, .field select:hover {
+      background: #303030;
+    }
+    .field input:focus, .field textarea:focus, .field select:focus {
+      outline: none;
+      border-color: #c9a87a;
+      background: #303030;
+    }
+    .field input::placeholder, .field textarea::placeholder {
+      color: #777;
+    }
+    .field textarea { resize: vertical; min-height: 70px; }
+
+    /* ── Ability scores grid ── */
+    .ability-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      padding: 10px;
+    }
+    .ability-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ability-cell label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #c9a87a;
+      font-weight: bold;
+    }
+    .ability-cell input {
+      background: #2a2a2a;
+      border: 1px solid #5a5a5a;
+      border-radius: 4px;
+      color: #e8e0d8;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      padding: 7px 2px;
+      width: 100%;
+      min-height: 34px;
+      text-align: center;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .ability-cell input:hover { background: #303030; }
+    .ability-cell input:focus { outline: none; border-color: #c9a87a; background: #303030; }
+    .ability-mod {
+      font-size: 11px;
+      color: #888;
+      min-height: 14px;
+    }
+
+    /* ── Dynamic list rows (attacks / abilities) ── */
+    .dynamic-list { display: flex; flex-direction: column; gap: 6px; }
+    .dynamic-row {
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      border-radius: 4px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+    }
+    .dynamic-row .remove-btn {
+      position: absolute;
+      top: 6px; right: 6px;
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+    .dynamic-row .remove-btn:hover { color: #cc4444; }
+    .add-btn {
+      background: none;
+      border: 1px dashed #555;
+      border-radius: 4px;
+      color: #888;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      padding: 6px;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+      margin-top: 2px;
+    }
+    .add-btn:hover { border-color: #c9a87a; color: #c9a87a; }
+
+    /* ── Visibility toggle ── */
+    .visibility-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+    }
+    .visibility-row label { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .vis-options { display: flex; gap: 6px; }
+    .vis-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid #5a5a5a;
+      background: #2a2a2a;
+      color: #aaa;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .vis-btn.active { background: #6b0000; border-color: #8b0000; color: #fff; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 10px 14px;
+      border-top: 1px solid #333;
+      display: flex;
+      gap: 8px;
+      background: #1a1a1a;
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+    }
+    .btn-save {
+      flex: 1;
+      background: #6b0000;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      padding: 9px;
+      transition: background 0.15s;
+    }
+    .btn-save:hover { background: #8b0000; }
+    .btn-save:disabled { background: #333; color: #666; cursor: default; }
+    .btn-clear {
+      background: none;
+      border: 1px solid #444;
+      border-radius: 5px;
+      color: #888;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      padding: 9px 14px;
+      transition: all 0.15s;
+    }
+    .btn-clear:hover { border-color: #cc4444; color: #cc4444; }
+
+    /* ── Status toast ── */
+    #status {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2a5c2a;
+      color: #9ddb9d;
+      border: 1px solid #3a7a3a;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #status.error { background: #5c2a2a; color: #db9d9d; border-color: #7a3a3a; }
+    #status.show { opacity: 1; }
+
+    /* ── No token selected state ── */
+    .no-token {
+      min-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      gap: 8px;
+      text-align: center;
+      padding: 20px;
+    }
+    .no-token svg { opacity: 0.3; }
+    .no-token p { font-size: 13px; line-height: 1.5; }
+
+    ::-webkit-scrollbar { width: 10px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #5a5a5a; border-radius: 5px; border: 2px solid #111; }
+    ::-webkit-scrollbar-thumb:hover { background: #777; }
+    /* ── Library section ── */
+    .lib-select-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .lib-select-row select {
+      flex: 1;
+      background: #2a2a2a;
+      border: 1px solid #5a5a5a;
+      border-radius: 4px;
+      color: #e8e0d8;
+      font-family: Georgia, serif;
+      font-size: 13px;
+      padding: 7px 8px;
+      min-height: 34px;
+    }
+    .lib-select-row select:focus { outline: none; border-color: #c9a87a; }
+    .lib-btn {
+      background: #2a2a2a;
+      border: 1px solid #5a5a5a;
+      border-radius: 4px;
+      color: #c9a87a;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 12px;
+      padding: 7px 10px;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .lib-btn:hover { background: #333; border-color: #c9a87a; }
+    .lib-btn.danger:hover { border-color: #cc4444; color: #cc4444; }
+    .lib-action-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .lib-count {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+    .lib-empty {
+      font-size: 12px;
+      color: #555;
+      font-style: italic;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>⚔ NPC Stat Editor</h1>
+    <div class="token-label" id="token-label">No token selected</div>
+  </div>
+
+  <div id="no-token-msg" class="no-token">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+    </svg>
+    <p>Select a token on the map<br>to edit its NPC stats.</p>
+  </div>
+
+  <div id="editor" style="display:none;">
+    <div class="form-body">
+
+      <!-- NPC Library -->
+      <div class="section">
+        <div class="section-title">📚 NPC Library</div>
+        <div class="section-body">
+          <div class="lib-select-row">
+            <select id="library-select">
+              <option value="">— Choose a saved NPC —</option>
+            </select>
+            <button class="lib-btn" onclick="loadFromLibrary()">Load</button>
+            <button class="lib-btn danger" onclick="deleteFromLibrary()">✕</button>
+          </div>
+          <div id="library-count" class="lib-count"></div>
+          <div id="library-empty" class="lib-empty">No NPCs saved yet — fill in stats below and click "Save to Library".</div>
+          <div class="lib-action-row">
+            <button class="lib-btn" onclick="saveToLibrary()">💾 Save to Library</button>
+            <button class="lib-btn" onclick="exportLibrary()">⬇ Export JSON</button>
+            <button class="lib-btn" onclick="importLibrary()">⬆ Import JSON</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Basic Info -->
+      <div class="section">
+        <div class="section-title">Identity</div>
+        <div class="section-body">
+          <div class="field">
+            <label>Name</label>
+            <input id="f-name" type="text" placeholder="Goblin Skirmisher" />
+          </div>
+          <div class="field">
+            <label>Subtitle</label>
+            <input id="f-subtitle" type="text" placeholder="Small humanoid, neutral evil" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Combat Stats -->
+      <div class="section">
+        <div class="section-title">Combat</div>
+        <div class="section-body">
+          <div class="row">
+            <div class="field">
+              <label>AC</label>
+              <input id="f-ac" type="number" placeholder="15" min="0" />
+            </div>
+            <div class="field">
+              <label>HP</label>
+              <input id="f-hp" type="number" placeholder="7" min="0" />
+            </div>
+            <div class="field">
+              <label>Speed (ft)</label>
+              <input id="f-speed" type="number" placeholder="30" min="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ability Scores -->
+      <div class="section">
+        <div class="section-title">Ability Scores</div>
+        <div class="ability-grid">
+          <div class="ability-cell">
+            <label>STR</label>
+            <input id="f-str" type="number" min="1" max="30" placeholder="10" oninput="updateMod('str')" />
+            <div class="ability-mod" id="mod-str"></div>
+          </div>
+          <div class="ability-cell">
+            <label>DEX</label>
+            <input id="f-dex" type="number" min="1" max="30" placeholder="10" oninput="updateMod('dex')" />
+            <div class="ability-mod" id="mod-dex"></div>
+          </div>
+          <div class="ability-cell">
+            <label>CON</label>
+            <input id="f-con" type="number" min="1" max="30" placeholder="10" oninput="updateMod('con')" />
+            <div class="ability-mod" id="mod-con"></div>
+          </div>
+          <div class="ability-cell">
+            <label>INT</label>
+            <input id="f-int" type="number" min="1" max="30" placeholder="10" oninput="updateMod('int')" />
+            <div class="ability-mod" id="mod-int"></div>
+          </div>
+          <div class="ability-cell">
+            <label>WIS</label>
+            <input id="f-wis" type="number" min="1" max="30" placeholder="10" oninput="updateMod('wis')" />
+            <div class="ability-mod" id="mod-wis"></div>
+          </div>
+          <div class="ability-cell">
+            <label>CHA</label>
+            <input id="f-cha" type="number" min="1" max="30" placeholder="10" oninput="updateMod('cha')" />
+            <div class="ability-mod" id="mod-cha"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attacks -->
+      <div class="section">
+        <div class="section-title">Actions / Attacks</div>
+        <div class="section-body">
+          <div class="dynamic-list" id="attacks-list"></div>
+          <button class="add-btn" onclick="addAttack()">+ Add Attack</button>
+        </div>
+      </div>
+
+      <!-- Abilities -->
+      <div class="section">
+        <div class="section-title">Traits & Abilities</div>
+        <div class="section-body">
+          <div class="dynamic-list" id="abilities-list"></div>
+          <button class="add-btn" onclick="addAbility()">+ Add Trait</button>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="section">
+        <div class="section-title">GM Notes</div>
+        <div class="section-body">
+          <div class="field">
+            <textarea id="f-notes" placeholder="Private notes, tactics, lore…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Visibility -->
+      <div class="section">
+        <div class="section-title">Visibility</div>
+        <div class="visibility-row">
+          <label>Show card to</label>
+          <div class="vis-options">
+            <button class="vis-btn active" id="vis-gm"  onclick="setVisibility('gm')">GM Only</button>
+            <button class="vis-btn"        id="vis-all" onclick="setVisibility('all')">Everyone</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /form-body -->
+
+    <div class="footer">
+      <button class="btn-clear" onclick="clearForm()">Clear</button>
+      <button class="btn-save" id="save-btn" onclick="saveStats()">Save to Token</button>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <script type="module" src="/src/editor.js"></script>
+</body>
+</html>
