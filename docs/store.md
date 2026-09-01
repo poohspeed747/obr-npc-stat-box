@@ -1,14 +1,14 @@
 ---
 title: NPC Stat Box
 description: Full NPC stat blocks with clickable dice rolls, live HP tracking, combat resolution, and a shared initiative tracker.
-author: Your Name
-image: https://your-deployment.vercel.app/store-hero.svg
-icon: https://your-deployment.vercel.app/icons/statcard.svg
+author: Poohspeed
+image: https://obr-npc-stats.vercel.app/store-hero.svg
+icon: https://obr-npc-stats.vercel.app/icons/statcard.svg
 tags:
   - combat
   - dice
-manifest: https://your-deployment.vercel.app/manifest.json
-learn-more: https://github.com/yourname/obr-npc-stats
+manifest: https://obr-npc-stats.vercel.app/manifest.json
+learn-more: https://github.com/poohspeed747/obr-npc-stat-box
 ---
 
 # NPC Stat Box
