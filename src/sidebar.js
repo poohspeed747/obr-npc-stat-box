@@ -67,23 +67,29 @@ OBR.onReady(async () => {
     if (message) addRollLogEntry(message);
   });
 
-  // Initiative: shared state synced for everyone via scene metadata + item metadata
-  const savedTurnMeta = await OBR.scene.getMetadata();
-  if (savedTurnMeta[TURN_KEY]) sceneTurnMeta = savedTurnMeta[TURN_KEY];
+  // Initiative: shared state synced for everyone via scene metadata + item metadata.
+  // Wrapped defensively — if any of this fails, the rest of the extension
+  // (token selection, editing, combat) must still work.
+  try {
+    const savedTurnMeta = await OBR.scene.getMetadata();
+    if (savedTurnMeta[TURN_KEY]) sceneTurnMeta = savedTurnMeta[TURN_KEY];
 
-  OBR.scene.onMetadataChange((metadata) => {
-    sceneTurnMeta = metadata[TURN_KEY] ?? { currentId: null, round: 1 };
+    OBR.scene.onMetadataChange((metadata) => {
+      sceneTurnMeta = metadata[TURN_KEY] ?? { currentId: null, round: 1 };
+      renderInitiative();
+    });
+
+    OBR.scene.items.onChange((items) => {
+      lastItemsSnapshot = items;
+      renderInitiative();
+    });
+
+    const initialItems = await OBR.scene.items.getItems();
+    lastItemsSnapshot = initialItems;
     renderInitiative();
-  });
-
-  OBR.scene.items.onChange((items) => {
-    lastItemsSnapshot = items;
-    renderInitiative();
-  });
-
-  const initialItems = await OBR.scene.items.getItems();
-  lastItemsSnapshot = initialItems;
-  renderInitiative();
+  } catch (err) {
+    console.error("[NPC Stat Box] Initiative tracker failed to initialize:", err);
+  }
 
   OBR.player.onChange(async (player) => {
     const sel = player.selection ?? [];
@@ -752,87 +758,106 @@ async function rollInitiativeForSelected() {
     return;
   }
 
-  const items = await OBR.scene.items.getItems(sel);
-  const results = [];
+  try {
+    const items = await OBR.scene.items.getItems(sel);
+    const results = [];
 
-  for (const item of items) {
-    const npc = item.metadata?.[`${PLUGIN_ID}/npc`];
-    const explicitBonus = item.metadata?.[INIT_BONUS_KEY];
-    let mod;
-    if (explicitBonus != null) {
-      mod = explicitBonus;
-    } else {
-      const dex = npc?.dex;
-      mod = dex != null ? Math.floor((dex - 10) / 2) : 0;
-    }
-    const { die, total } = rollAttack(mod);
-    const name = item.name || item.text?.plainText || "Unnamed";
-    results.push({ id: item.id, name, total, die, mod });
-  }
-
-  await OBR.scene.items.updateItems(sel, (updateItems) => {
-    for (const item of updateItems) {
-      const result = results.find(r => r.id === item.id);
-      if (result) {
-        if (!item.metadata) item.metadata = {};
-        item.metadata[INIT_KEY] = result.total;
+    for (const item of items) {
+      const npc = item.metadata?.[`${PLUGIN_ID}/npc`];
+      const explicitBonus = item.metadata?.[INIT_BONUS_KEY];
+      let mod;
+      if (explicitBonus != null) {
+        mod = explicitBonus;
+      } else {
+        const dex = npc?.dex;
+        mod = dex != null ? Math.floor((dex - 10) / 2) : 0;
       }
+      const { die, total } = rollAttack(mod);
+      const name = item.name || item.text?.plainText || "Unnamed";
+      results.push({ id: item.id, name, total, die, mod });
     }
-  });
 
-  const summary = results.map(r => `${r.name}: ${r.die}${r.mod >= 0 ? "+" : ""}${r.mod === 0 ? "" : r.mod} = ${r.total}`).join(" | ");
-  await announceRoll(`⚡ Initiative — ${summary}`);
+    await OBR.scene.items.updateItems(sel, (updateItems) => {
+      for (const item of updateItems) {
+        const result = results.find(r => r.id === item.id);
+        if (result) {
+          if (!item.metadata) item.metadata = {};
+          item.metadata[INIT_KEY] = result.total;
+        }
+      }
+    });
+
+    const summary = results.map(r => `${r.name}: ${r.die}${r.mod >= 0 ? "+" : ""}${r.mod === 0 ? "" : r.mod} = ${r.total}`).join(" | ");
+    await announceRoll(`⚡ Initiative — ${summary}`);
+  } catch (err) {
+    console.error("[NPC Stat Box] Roll initiative failed:", err);
+    showStatus("Failed to roll initiative — check console", true);
+  }
 }
 
 async function nextTurn() {
   const entries = getSortedInitiative();
   if (entries.length === 0) return;
 
-  const currentIndex = entries.findIndex(e => e.id === sceneTurnMeta.currentId);
-  let nextIndex, nextRound;
+  try {
+    const currentIndex = entries.findIndex(e => e.id === sceneTurnMeta.currentId);
+    let nextIndex, nextRound;
 
-  if (currentIndex === -1) {
-    // Not started yet — begin at the top of the order.
-    nextIndex = 0;
-    nextRound = sceneTurnMeta.round || 1;
-  } else if (currentIndex === entries.length - 1) {
-    // Wrapped around — new round.
-    nextIndex = 0;
-    nextRound = (sceneTurnMeta.round || 1) + 1;
-  } else {
-    nextIndex = currentIndex + 1;
-    nextRound = sceneTurnMeta.round || 1;
+    if (currentIndex === -1) {
+      // Not started yet — begin at the top of the order.
+      nextIndex = 0;
+      nextRound = sceneTurnMeta.round || 1;
+    } else if (currentIndex === entries.length - 1) {
+      // Wrapped around — new round.
+      nextIndex = 0;
+      nextRound = (sceneTurnMeta.round || 1) + 1;
+    } else {
+      nextIndex = currentIndex + 1;
+      nextRound = sceneTurnMeta.round || 1;
+    }
+
+    const next = entries[nextIndex];
+    const newMeta = { currentId: next.id, round: nextRound };
+    await OBR.scene.setMetadata({ [TURN_KEY]: newMeta });
+    await announceRoll(`⚡ Round ${nextRound} — it's ${next.name}'s turn!`);
+  } catch (err) {
+    console.error("[NPC Stat Box] Next turn failed:", err);
+    showStatus("Failed to advance turn — check console", true);
   }
-
-  const next = entries[nextIndex];
-  const newMeta = { currentId: next.id, round: nextRound };
-  await OBR.scene.setMetadata({ [TURN_KEY]: newMeta });
-  await announceRoll(`⚡ Round ${nextRound} — it's ${next.name}'s turn!`);
 }
 
 async function removeFromInitiative(id) {
-  await OBR.scene.items.updateItems([id], (items) => {
-    for (const item of items) {
-      if (item.metadata) delete item.metadata[INIT_KEY];
+  try {
+    await OBR.scene.items.updateItems([id], (items) => {
+      for (const item of items) {
+        if (item.metadata) delete item.metadata[INIT_KEY];
+      }
+    });
+    if (sceneTurnMeta.currentId === id) {
+      await OBR.scene.setMetadata({ [TURN_KEY]: { currentId: null, round: sceneTurnMeta.round || 1 } });
     }
-  });
-  if (sceneTurnMeta.currentId === id) {
-    await OBR.scene.setMetadata({ [TURN_KEY]: { currentId: null, round: sceneTurnMeta.round || 1 } });
+  } catch (err) {
+    console.error("[NPC Stat Box] Remove from initiative failed:", err);
   }
 }
 
 async function clearInitiative() {
   if (!confirm("Clear the entire initiative order for everyone?")) return;
-  const entries = getSortedInitiative();
-  const ids = entries.map(e => e.id);
-  if (ids.length > 0) {
-    await OBR.scene.items.updateItems(ids, (items) => {
-      for (const item of items) {
-        if (item.metadata) delete item.metadata[INIT_KEY];
-      }
-    });
+  try {
+    const entries = getSortedInitiative();
+    const ids = entries.map(e => e.id);
+    if (ids.length > 0) {
+      await OBR.scene.items.updateItems(ids, (items) => {
+        for (const item of items) {
+          if (item.metadata) delete item.metadata[INIT_KEY];
+        }
+      });
+    }
+    await OBR.scene.setMetadata({ [TURN_KEY]: { currentId: null, round: 1 } });
+  } catch (err) {
+    console.error("[NPC Stat Box] Clear initiative failed:", err);
+    showStatus("Failed to clear initiative — check console", true);
   }
-  await OBR.scene.setMetadata({ [TURN_KEY]: { currentId: null, round: 1 } });
 }
 
 // ── Roll log (persistent, independent of current mode) ────────────────────

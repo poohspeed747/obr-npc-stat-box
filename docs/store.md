@@ -1,7 +1,7 @@
 ---
 title: NPC Stat Box
 description: Full NPC stat blocks with clickable dice rolls, live HP tracking, combat resolution, and a shared initiative tracker.
-author: Your Name
+author: Poohspeed
 image: https://your-deployment.vercel.app/store-hero.svg
 icon: https://your-deployment.vercel.app/icons/statcard.svg
 tags:
@@ -32,5 +32,13 @@ Give your NPC and monster tokens real stat blocks — right inside Owlbear Rodeo
 2. Enable it for your room via the room menu → Extensions
 3. Click the toolbar action to open the sidebar
 4. Select a token to view or (as GM) edit its stats
+
+## Screenshots
+
+![Stat card view](https://obr-npc-stats.vercel.app/Stat_Card_View.png)
+
+![Combat resolution](https://obr-npc-stats.vercel.app/Combat_resolution.png)
+
+![Initiative tracker](https://obr-npc-stats.vercel.app/Inish_Tracker.png)
 
 Full documentation and self-hosting instructions are on [GitHub](https://github.com/yourname/obr-npc-stats).
