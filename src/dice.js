@@ -11,14 +11,19 @@ function rollD20() {
 /**
  * Roll a damage-style dice expression like "1d6+2" or "2d8".
  * Returns { total, rolls, expression } — rolls is the array of individual die results.
+ *
+ * If `crit` is true, doubles the NUMBER OF DICE rolled (not the flat modifier),
+ * matching the standard D&D 5e critical hit rule — e.g. "1d6+2" becomes 2d6+2 on a crit.
  */
-export function rollDiceExpression(expr) {
+export function rollDiceExpression(expr, crit = false) {
   const match = String(expr).trim().match(/^(\d+)d(\d+)\s*([+-]\s*\d+)?/i);
   if (!match) return { total: null, rolls: [], expression: expr };
 
-  const count = parseInt(match[1]);
+  let count = parseInt(match[1]);
   const sides = parseInt(match[2]);
   const modifier = match[3] ? parseInt(match[3].replace(/\s/g, "")) : 0;
+
+  if (crit) count *= 2;
 
   const rolls = [];
   for (let i = 0; i < count; i++) {
@@ -26,7 +31,7 @@ export function rollDiceExpression(expr) {
   }
   const total = rolls.reduce((a, b) => a + b, 0) + modifier;
 
-  return { total, rolls, modifier, expression: expr };
+  return { total, rolls, modifier, expression: expr, crit };
 }
 
 /**

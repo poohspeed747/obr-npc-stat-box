@@ -313,29 +313,36 @@ async function resolveCombatAttack(attack) {
   const targetAc = combatTargetNpc?.ac;
   const canSeeTargetStats = isGM || combatTargetNpc?.visibility === "all";
   const hasCharges = chargeState(attack) != null;
+  const isCrit = die === 20;
+  const isFumble = die === 1;
 
   if (targetAc == null) {
-    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total} to hit (no target AC set)`);
+    const hitLabel = isCrit ? " — CRITICAL HIT!" : "";
+    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total} to hit (no target AC set)${hitLabel}`);
     if (hasCharges) await consumeCombatCharge(attack);
     return;
   }
 
-  const hit = total >= targetAc;
+  // Natural 20 always hits, natural 1 always misses — standard 5e rule,
+  // regardless of what the total would otherwise be against AC.
+  const hit = isCrit ? true : isFumble ? false : total >= targetAc;
 
   // Hit/miss messages never reveal HP, so they're always safe to broadcast fully.
   // AC itself is only shown in the broadcast if the target's stats are visible.
   const vsText = canSeeTargetStats ? ` vs AC ${targetAc}` : "";
 
   if (!hit) {
-    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total}${vsText} — MISS`);
+    const missLabel = isFumble ? " — MISS (natural 1)" : " — MISS";
+    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total}${vsText}${missLabel}`);
     if (hasCharges) await consumeCombatCharge(attack);
     return;
   }
 
-  await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total}${vsText} — HIT!`);
+  const hitLabel = isCrit ? " — CRITICAL HIT!" : " — HIT!";
+  await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total}${vsText}${hitLabel}`);
   if (hasCharges) await consumeCombatCharge(attack);
 
-  const dmg = rollDiceExpression(attack.damage);
+  const dmg = rollDiceExpression(attack.damage, isCrit);
   if (dmg.total == null) return;
 
   setTimeout(async () => {
@@ -343,11 +350,12 @@ async function resolveCombatAttack(attack) {
     const max = combatTargetNpc.hp ?? null;
     const curBefore = combatTargetNpc.currentHp ?? max ?? 0;
     const curAfter = max != null ? Math.max(0, curBefore - dmg.total) : curBefore;
+    const critLabel = isCrit ? " (crit — dice doubled)" : "";
 
     // Damage dealt this hit is fine to show everyone (players usually see damage
     // rolls in TTRPGs). What we hide is the target's exact current/max HP total
     // when that NPC's visibility is set to GM Only.
-    let msg = `💥 ${targetName} takes ${dmg.rolls.join("+")}${modStr} = ${dmg.total} damage from ${attack.name}`;
+    let msg = `💥 ${targetName} takes ${dmg.rolls.join("+")}${modStr} = ${dmg.total} damage from ${attack.name}${critLabel}`;
     if (max != null && canSeeTargetStats) {
       msg += ` (${curAfter} / ${max} HP)`;
     }
@@ -602,12 +610,15 @@ async function handleAttackClick(npc, attack) {
   if (state?.depleted) return; // shouldn't happen since button is disabled, but just in case
 
   const { die, bonus, total } = rollAttack(attack.bonus);
-  await announceRoll(`⚔ ${npc.name || "NPC"} — ${attack.name}: ${die} +${bonus} = ${total} to hit`);
+  const isCrit = die === 20;
+  const hitLabel = isCrit ? " — CRITICAL HIT!" : "";
+  await announceRoll(`⚔ ${npc.name || "NPC"} — ${attack.name}: ${die} +${bonus} = ${total} to hit${hitLabel}`);
   setTimeout(async () => {
-    const dmg = rollDiceExpression(attack.damage);
+    const dmg = rollDiceExpression(attack.damage, isCrit);
     if (dmg.total != null) {
       const modStr = dmg.modifier ? (dmg.modifier >= 0 ? "+" : "") + dmg.modifier : "";
-      await announceRoll(`💥 ${npc.name || "NPC"} — ${attack.name} damage: ${dmg.rolls.join("+")}${modStr} = ${dmg.total}`);
+      const critLabel = isCrit ? " (crit — dice doubled)" : "";
+      await announceRoll(`💥 ${npc.name || "NPC"} — ${attack.name} damage: ${dmg.rolls.join("+")}${modStr} = ${dmg.total}${critLabel}`);
     }
   }, 600);
 
