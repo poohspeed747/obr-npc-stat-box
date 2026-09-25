@@ -19,6 +19,7 @@ Give your NPC and monster tokens real stat blocks — right inside Owlbear Rodeo
 
 - **Stat cards** for every token: AC, HP, Speed, ability scores, attacks, and traits
 - **Click to roll** — ability checks, attack rolls, and damage all roll with a tap, broadcast to the room
+- **Advantage and disadvantage ** rolls 2 dice and takes the higher /  lower number for the calculation
 - **Live HP tracking** with quick +/- controls, kept in sync for everyone
 - **Combat resolver** — select an attacker and a target, click an attack, and hit/miss and damage resolve automatically against the target's AC and HP
 - **Charges & recharge** — track limited-use attacks and abilities, including "Recharge 5–6" style mechanics

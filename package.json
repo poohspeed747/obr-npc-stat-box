@@ -1,6 +1,6 @@
 {
   "name": "obr-npc-stats",
-  "version": "2.9.27",
+  "version": "2.10.29",
   "description": "NPC stat card popover for Owlbear Rodeo",
   "type": "module",
   "scripts": {

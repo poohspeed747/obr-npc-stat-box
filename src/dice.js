@@ -9,6 +9,23 @@ function rollD20() {
 }
 
 /**
+ * Roll a d20 respecting advantage/disadvantage.
+ * mode: "normal" | "advantage" | "disadvantage"
+ * Returns { die, rolls } — rolls is [x] for normal, [x,y] for adv/dis,
+ * and die is whichever value actually counts (higher for adv, lower for dis).
+ */
+function rollD20WithMode(mode) {
+  if (mode === "advantage" || mode === "disadvantage") {
+    const a = rollD20();
+    const b = rollD20();
+    const die = mode === "advantage" ? Math.max(a, b) : Math.min(a, b);
+    return { die, rolls: [a, b] };
+  }
+  const die = rollD20();
+  return { die, rolls: [die] };
+}
+
+/**
  * Roll a damage-style dice expression like "1d6+2" or "2d8".
  * Returns { total, rolls, expression } — rolls is the array of individual die results.
  *
@@ -35,20 +52,22 @@ export function rollDiceExpression(expr, crit = false) {
 }
 
 /**
- * Roll an ability check: 1d20 + modifier.
+ * Roll an ability check: 1d20 + modifier, respecting advantage/disadvantage.
+ * mode: "normal" | "advantage" | "disadvantage"
  */
-export function rollAbilityCheck(score) {
+export function rollAbilityCheck(score, mode = "normal") {
   const mod = Math.floor((score - 10) / 2);
-  const die = rollD20();
-  return { die, mod, total: die + mod };
+  const { die, rolls } = rollD20WithMode(mode);
+  return { die, mod, total: die + mod, rolls, mode };
 }
 
 /**
- * Roll an attack's to-hit: 1d20 + bonus.
+ * Roll an attack's to-hit: 1d20 + bonus, respecting advantage/disadvantage.
+ * mode: "normal" | "advantage" | "disadvantage"
  */
-export function rollAttack(bonus) {
-  const die = rollD20();
-  return { die, bonus, total: die + bonus };
+export function rollAttack(bonus, mode = "normal") {
+  const { die, rolls } = rollD20WithMode(mode);
+  return { die, bonus, total: die + bonus, rolls, mode };
 }
 
 /**

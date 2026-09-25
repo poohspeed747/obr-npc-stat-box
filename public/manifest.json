@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "NPC Stat Box",
-  "version": "2.9.27",
+  "version": "2.10.29",
   "description": "Shows NPC stat cards when a token is selected.",
   "author": "Your Name",
   "icon": "/icons/statcard.svg",

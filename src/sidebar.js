@@ -13,6 +13,7 @@ let currentNpc = null;
 let currentVisibility = "gm";
 let isGM = false;
 let mode = "view"; // "view" | "edit"
+let rollMode = "normal"; // "normal" | "advantage" | "disadvantage" — applies to the next d20 roll
 
 let sceneTurnMeta = { currentId: null, round: 1 };
 let lastItemsSnapshot = [];
@@ -61,6 +62,10 @@ OBR.onReady(async () => {
     document.getElementById("init-next-turn").addEventListener("click", nextTurn);
     document.getElementById("init-clear-all").addEventListener("click", clearInitiative);
   }
+
+  document.querySelectorAll(".adv-btn").forEach(btn => {
+    btn.addEventListener("click", () => setRollMode(btn.dataset.mode));
+  });
 
   OBR.broadcast.onMessage(ROLL_CHANNEL, (event) => {
     const { message } = event.data ?? {};
@@ -307,7 +312,8 @@ async function resolveCombatRecharge(attack) {
 }
 
 async function resolveCombatAttack(attack) {
-  const { die, bonus, total } = rollAttack(attack.bonus);
+  const usedMode = rollMode;
+  const { die, bonus, total, rolls } = rollAttack(attack.bonus, usedMode);
   const attackerName = combatAttackerNpc.name || combatAttackerTokenName;
   const targetName = combatTargetNpc?.name || combatTargetTokenName;
   const targetAc = combatTargetNpc?.ac;
@@ -315,10 +321,12 @@ async function resolveCombatAttack(attack) {
   const hasCharges = chargeState(attack) != null;
   const isCrit = die === 20;
   const isFumble = die === 1;
+  const rollStr = formatD20Rolls(rolls, usedMode);
+  resetRollMode();
 
   if (targetAc == null) {
     const hitLabel = isCrit ? " — CRITICAL HIT!" : "";
-    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total} to hit (no target AC set)${hitLabel}`);
+    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${rollStr} +${bonus} = ${total} to hit (no target AC set)${hitLabel}`);
     if (hasCharges) await consumeCombatCharge(attack);
     return;
   }
@@ -333,13 +341,13 @@ async function resolveCombatAttack(attack) {
 
   if (!hit) {
     const missLabel = isFumble ? " — MISS (natural 1)" : " — MISS";
-    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total}${vsText}${missLabel}`);
+    await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${rollStr} +${bonus} = ${total}${vsText}${missLabel}`);
     if (hasCharges) await consumeCombatCharge(attack);
     return;
   }
 
   const hitLabel = isCrit ? " — CRITICAL HIT!" : " — HIT!";
-  await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${die} +${bonus} = ${total}${vsText}${hitLabel}`);
+  await announceRoll(`⚔ ${attackerName} — ${attack.name}: ${rollStr} +${bonus} = ${total}${vsText}${hitLabel}`);
   if (hasCharges) await consumeCombatCharge(attack);
 
   const dmg = rollDiceExpression(attack.damage, isCrit);
@@ -355,7 +363,7 @@ async function resolveCombatAttack(attack) {
     // Damage dealt this hit is fine to show everyone (players usually see damage
     // rolls in TTRPGs). What we hide is the target's exact current/max HP total
     // when that NPC's visibility is set to GM Only.
-    let msg = `💥 ${targetName} takes ${dmg.rolls.join("+")}${modStr} = ${dmg.total} damage from ${attack.name}${critLabel}`;
+    let msg = `💥 ${targetName} takes [${dmg.rolls.join(" + ")}]${modStr} = ${dmg.total} damage from ${attack.name}${critLabel}`;
     if (max != null && canSeeTargetStats) {
       msg += ` (${curAfter} / ${max} HP)`;
     }
@@ -593,9 +601,12 @@ function renderAbility(stat, score, npcName) {
 }
 
 async function handleAbilityClick(stat, score, npcName) {
-  const { die, mod, total } = rollAbilityCheck(score);
+  const usedMode = rollMode;
+  const { mod, total, rolls } = rollAbilityCheck(score, usedMode);
   const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
-  await announceRoll(`🎲 ${npcName || "NPC"} — ${stat.toUpperCase()} Check: ${die} ${modStr} = ${total}`);
+  const rollStr = formatD20Rolls(rolls, usedMode);
+  await announceRoll(`🎲 ${npcName || "NPC"} — ${stat.toUpperCase()} Check: ${rollStr} ${modStr} = ${total}`);
+  resetRollMode();
 }
 
 /** Returns { cur, max, depleted } for a limited-use attack, or null if unlimited. */
@@ -609,16 +620,19 @@ async function handleAttackClick(npc, attack) {
   const state = chargeState(attack);
   if (state?.depleted) return; // shouldn't happen since button is disabled, but just in case
 
-  const { die, bonus, total } = rollAttack(attack.bonus);
+  const usedMode = rollMode;
+  const { die, bonus, total, rolls } = rollAttack(attack.bonus, usedMode);
   const isCrit = die === 20;
   const hitLabel = isCrit ? " — CRITICAL HIT!" : "";
-  await announceRoll(`⚔ ${npc.name || "NPC"} — ${attack.name}: ${die} +${bonus} = ${total} to hit${hitLabel}`);
+  const rollStr = formatD20Rolls(rolls, usedMode);
+  await announceRoll(`⚔ ${npc.name || "NPC"} — ${attack.name}: ${rollStr} +${bonus} = ${total} to hit${hitLabel}`);
+  resetRollMode();
   setTimeout(async () => {
     const dmg = rollDiceExpression(attack.damage, isCrit);
     if (dmg.total != null) {
       const modStr = dmg.modifier ? (dmg.modifier >= 0 ? "+" : "") + dmg.modifier : "";
       const critLabel = isCrit ? " (crit — dice doubled)" : "";
-      await announceRoll(`💥 ${npc.name || "NPC"} — ${attack.name} damage: ${dmg.rolls.join("+")}${modStr} = ${dmg.total}${critLabel}`);
+      await announceRoll(`💥 ${npc.name || "NPC"} — ${attack.name} damage: [${dmg.rolls.join(" + ")}]${modStr} = ${dmg.total}${critLabel}`);
     }
   }, 600);
 
@@ -685,7 +699,7 @@ async function handleAbilityUseClick(npc, ability) {
       const dmg = rollDiceExpression(ability.damage);
       if (dmg.total != null) {
         const modStr = dmg.modifier ? (dmg.modifier >= 0 ? "+" : "") + dmg.modifier : "";
-        await announceRoll(`💥 ${npcName} — ${ability.name} damage: ${dmg.rolls.join("+")}${modStr} = ${dmg.total}`);
+        await announceRoll(`💥 ${npcName} — ${ability.name} damage: [${dmg.rolls.join(" + ")}]${modStr} = ${dmg.total}`);
       }
     }, 600);
   }
@@ -869,6 +883,27 @@ async function clearInitiative() {
     console.error("[NPC Stat Box] Clear initiative failed:", err);
     showStatus("Failed to clear initiative — check console", true);
   }
+}
+
+// ── Advantage / Disadvantage toggle ─────────────────────────────────────────
+function setRollMode(newMode) {
+  rollMode = newMode;
+  document.getElementById("adv-dis").classList.toggle("active", newMode === "disadvantage");
+  document.getElementById("adv-normal").classList.toggle("active", newMode === "normal");
+  document.getElementById("adv-adv").classList.toggle("active", newMode === "advantage");
+}
+
+/** Resets the toggle back to Normal after a roll is made — prevents accidentally
+ *  leaving advantage/disadvantage on for the next unrelated roll. */
+function resetRollMode() {
+  setRollMode("normal");
+}
+
+/** Builds the "15" or "15, 8 → 15" portion of a roll message depending on mode. */
+function formatD20Rolls(rolls, mode) {
+  if (mode === "advantage") return `${rolls.join(", ")}→${Math.max(...rolls)} (adv)`;
+  if (mode === "disadvantage") return `${rolls.join(", ")}→${Math.min(...rolls)} (dis)`;
+  return `${rolls[0]}`;
 }
 
 // ── Roll log (persistent, independent of current mode) ────────────────────
