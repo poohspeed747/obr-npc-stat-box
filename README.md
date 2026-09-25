@@ -75,6 +75,8 @@ This extension is a static site — no backend or database required. You can hos
 ```bash
 git clone https://github.com/poohspeed747/obr-npc-stat-box.git
 cd obr-npc-stat-box
+git clone https://github.com/poohspeed747/obr-npc-stat-box.git
+cd obr-npc-stat-box
 npm install
 npm run start   # local dev server at http://localhost:5173
 ```
@@ -100,11 +102,18 @@ Everything is saved directly on each token's own metadata via the Owlbear Rodeo 
 ```
 ├── background.html      # Invisible background page — dice roll listener, always running
 ├── sidebar.html         # The main docked panel (view / edit / combat / initiative)
+├── sidebar.html         # The main docked panel (view / edit / combat / initiative)
 ├── src/
 │   ├── sidebar.js       # All sidebar UI logic
 │   ├── dice.js          # Dice rolling + broadcast helpers
 │   └── Main.js          # Background script entry
+│   ├── sidebar.js       # All sidebar UI logic
+│   ├── dice.js          # Dice rolling + broadcast helpers
+│   └── Main.js          # Background script entry
 ├── public/
+│   ├── manifest.json    # Owlbear Rodeo extension manifest
+│   ├── statcard.css     # Read-only stat card styling
+│   └── *.png            # Screenshots used in this README
 │   ├── manifest.json    # Owlbear Rodeo extension manifest
 │   ├── statcard.css     # Read-only stat card styling
 │   └── *.png            # Screenshots used in this README
